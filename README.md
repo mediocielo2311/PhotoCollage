@@ -68,7 +68,7 @@ El botón atrás del dispositivo cierra primero la edición y después la vista 
 | `MainActivity.kt` | Pantalla principal: eventos de las barras y los botones flotantes, selección, menús y diálogos. |
 | `FotosViewModel.kt` | Estado del collage (fotos, columnas, selección y modo edición); lo conserva al girar la pantalla. |
 | `Foto.kt` | Modelo de datos: Uri original de la fotografía y su estado de edición. |
-| `FotosAdapter.kt` | Adaptador de la cuadrícula: pinta cada celda ya editada y cachea los resultados procesados. |
+| `FotosAdapter.kt` | Adaptador de la cuadrícula: calcula en segundo plano la imagen editada de cada celda y guarda en caché la versión vigente de cada fotografía. |
 | `FiltrosImagen.kt` | Filtros implementados en Kotlin manipulando directamente los píxeles. |
 | `BitmapCache.kt` | Decodifica y reduce cada imagen original una sola vez, y libera memoria al eliminar fotos. |
 | `GaleriaActivity.kt` | Pantalla de collages guardados: consulta a `MediaStore` y vista a pantalla completa. |
@@ -85,6 +85,19 @@ La imagen original nunca se modifica: cada operación genera un bitmap nuevo a p
 que se conserva en memoria, por lo que restaurar una fotografía es inmediato. Las imágenes se
 decodifican reducidas (720 px de lado máximo) para limitar el consumo de memoria, y se liberan de
 la caché al eliminar las fotos del collage.
+
+El cálculo de los píxeles se realiza en segundo plano mediante corrutinas, de modo que la interfaz
+no se bloquea al aplicar un filtro ni al arrastrar los deslizadores de brillo y saturación. De cada
+fotografía se conserva en caché únicamente su versión vigente: en cuanto cambia su edición se
+descarta la anterior, por lo que la memoria ocupada no crece con el uso.
+
+### Conservación del estado
+
+El estado del collage vive en un `ViewModel`, por lo que sobrevive a los cambios de configuración
+como el giro de pantalla. Además se guarda en `onSaveInstanceState`, de forma que el collage se
+recupera también si el sistema cierra la aplicación para liberar memoria. Al recuperarlo se
+comprueba fotografía a fotografía que la aplicación siga teniendo acceso a ella, descartando las
+que ya no se puedan leer.
 
 ## Permisos
 
