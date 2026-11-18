@@ -1,0 +1,62 @@
+<resources>
+    <string name="app_name">PhotoCollage</string>
+
+    <!-- Barra principal -->
+    <string name="btn_editar">Editar</string>
+    <string name="btn_eliminar">Eliminar foto</string>
+    <string name="btn_eliminar_todas">Eliminar todas</string>
+    <string name="btn_restaurar">Restaurar original</string>
+    <string name="btn_compartir">Compartir</string>
+    <string name="btn_galeria">Collages guardados</string>
+
+    <!-- Botones flotantes -->
+    <string name="btn_anadir">Añadir fotos</string>
+    <string name="btn_vista">Cambiar vista</string>
+
+    <!-- Barra de edición -->
+    <string name="btn_brillo">Brillo y saturación</string>
+    <string name="btn_filtros">Filtros</string>
+    <string name="btn_rotar">Rotar 90º</string>
+    <string name="btn_texto">Añadir texto</string>
+    <string name="btn_cerrar_edicion">Cerrar edición</string>
+    <string name="btn_cerrar_vista">Cerrar vista ampliada</string>
+    <string name="btn_guardar">Guardar collage</string>
+
+    <string name="btn_byn">Blanco y negro</string>
+    <string name="btn_sepia">Sepia</string>
+    <string name="columnas_2">2 columnas</string>
+    <string name="columnas_3">3 columnas</string>
+    <string name="columnas_4">4 columnas</string>
+
+    <string name="label_brillo">Brillo</string>
+    <string name="label_saturacion">Saturación</string>
+
+    <string name="collage_vacio">El collage está vacío. Pulsa el botón de añadir para empezar.</string>
+    <string name="sin_seleccion">Selecciona primero una fotografía.</string>
+    <string name="foto_duplicada">Esa fotografía ya estaba en el collage.</string>
+    <string name="collage_guardado">Collage guardado en la galería.</string>
+    <string name="error_guardar">No se ha podido guardar el collage.</string>
+
+    <string name="confirmar_eliminar_todas_titulo">Eliminar todas las fotografías</string>
+    <string name="confirmar_eliminar_todas_mensaje">Se vaciará el collage completo. ¿Quieres continuar?</string>
+    <string name="confirmar_eliminar_boton">Eliminar</string>
+    <string name="cancelar_boton">Cancelar</string>
+    <string name="aceptar_boton">Aceptar</string>
+    <string name="dialogo_texto_titulo">Texto sobre la fotografía</string>
+    <string name="dialogo_texto_hint">Escribe el texto</string>
+    <string name="compartir_titulo">Compartir collage mediante</string>
+    <string name="descripcion_foto">Fotografía del collage</string>
+
+    <!-- Galería de collages -->
+    <string name="galeria_titulo">Collages guardados</string>
+    <string name="galeria_vacia">Todavía no has guardado ningún collage.</string>
+    <string name="btn_volver">Volver</string>
+    <string name="descripcion_collage">Collage guardado</string>
+    <string name="btn_seleccionar_todos">Seleccionar todos</string>
+    <string name="btn_cerrar_seleccion">Salir de la selección</string>
+    <string name="btn_eliminar_collages">Eliminar collages</string>
+    <string name="seleccionados">%1$d seleccionados</string>
+    <string name="confirmar_eliminar_collages_titulo">Eliminar collages</string>
+    <string name="confirmar_eliminar_collages_mensaje">Se eliminarán del dispositivo %1$d collage(s). ¿Quieres continuar?</string>
+    <string name="collages_eliminados">Collages eliminados.</string>
+</resources>

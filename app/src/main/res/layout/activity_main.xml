@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <TextView
+        android:id="@+id/tvTitulo"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:paddingTop="12dp"
+        android:paddingBottom="12dp"
+        android:text="@string/app_name"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvFotos"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:clipToPadding="false"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="8dp"
+        app:layout_constraintBottom_toTopOf="@id/bloqueInferior"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tvTitulo" />
+
+    <TextView
+        android:id="@+id/tvCollageVacio"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:padding="32dp"
+        android:text="@string/collage_vacio"
+        android:textAlignment="center"
+        android:textSize="16sp"
+        app:layout_constraintBottom_toBottomOf="@id/rvFotos"
+        app:layout_constraintEnd_toEndOf="@id/rvFotos"
+        app:layout_constraintStart_toStartOf="@id/rvFotos"
+        app:layout_constraintTop_toTopOf="@id/rvFotos" />
+
+    <FrameLayout
+        android:id="@+id/panelVistaGrande"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#EE000000"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/bloqueInferior"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tvTitulo">
+
+        <ImageView
+            android:id="@+id/ivVistaGrande"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@string/descripcion_foto"
+            android:padding="8dp"
+            android:scaleType="fitCenter" />
+
+        <ImageButton
+            android:id="@+id/btnCerrarVista"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="top|end"
+            android:layout_margin="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/btn_cerrar_vista"
+            android:src="@drawable/ic_close"
+            android:tint="#FFFFFF" />
+
+    </FrameLayout>
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabVista"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="20dp"
+        android:layout_marginBottom="12dp"
+        android:contentDescription="@string/btn_vista"
+        app:fabSize="mini"
+        app:layout_constraintBottom_toTopOf="@id/fabAnadir"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:srcCompat="@drawable/ic_grid_view" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabAnadir"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
+        android:contentDescription="@string/btn_anadir"
+        app:layout_constraintBottom_toTopOf="@id/bloqueInferior"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:srcCompat="@drawable/ic_add_photo_alternate" />
+
+    <LinearLayout
+        android:id="@+id/bloqueInferior"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="?attr/colorSurface"
+        android:orientation="vertical"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#22000000" />
+
+        <LinearLayout
+            android:id="@+id/panelDeslizadores"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="16dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="16dp"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/label_brillo"
+                android:textSize="13sp" />
+
+            <SeekBar
+                android:id="@+id/sbBrillo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:max="200"
+                android:progress="100" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/label_saturacion"
+                android:textSize="13sp" />
+
+            <SeekBar
+                android:id="@+id/sbSaturacion"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:max="200"
+                android:progress="100" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/barraPrincipal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <ImageButton
+                android:id="@+id/btnEditar"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_weight="1"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/btn_editar"
+                android:src="@drawable/ic_edit" />
+
+            <ImageButton
+                android:id="@+id/btnEliminar"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_weight="1"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/btn_eliminar"
+                android:src="@drawable/ic_delete" />
+
+            <ImageButton
+                android:id="@+id/btnEliminarTodas"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_weight="1"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/btn_eliminar_todas"
+                android:src="@drawable/ic_delete_sweep" />
+
+            <ImageButton
+                android:id="@+id/btnRestaurar"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_weight="1"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/btn_restaurar"
+                android:src="@drawable/ic_restore" />
+
+            <ImageButton
+                android:id="@+id/btnCompartir"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_weight="1"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/btn_compartir"
+                android:src="@drawable/ic_share" />
+
+            <ImageButton
+                android:id="@+id/btnGuardar"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_weight="1"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/btn_guardar"
+                android:src="@drawable/ic_save" />
+
+            <ImageButton
+                android:id="@+id/btnGaleria"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_weight="1"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/btn_galeria"
+                android:src="@drawable/ic_photo_library" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/barraEdicion"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <ImageButton
+                android:id="@+id/btnBrillo"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_weight="1"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/btn_brillo"
+                android:src="@drawable/ic_brightness_6" />
+
+            <ImageButton
+                android:id="@+id/btnFiltros"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_weight="1"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/btn_filtros"
+                android:src="@drawable/ic_photo_filter" />
+
+            <ImageButton
+                android:id="@+id/btnRotar"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_weight="1"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/btn_rotar"
+                android:src="@drawable/ic_rotate_right" />
+
+            <ImageButton
+                android:id="@+id/btnTexto"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_weight="1"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/btn_texto"
+                android:src="@drawable/ic_text_fields" />
+
+            <ImageButton
+                android:id="@+id/btnRestaurarEdicion"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_weight="1"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/btn_restaurar"
+                android:src="@drawable/ic_restore" />
+
+            <ImageButton
+                android:id="@+id/btnCerrarEdicion"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_weight="1"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/btn_cerrar_edicion"
+                android:src="@drawable/ic_close" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
