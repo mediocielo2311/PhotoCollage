@@ -36,6 +36,9 @@
     <string name="foto_duplicada">Esa fotografía ya estaba en el collage.</string>
     <string name="collage_guardado">Collage guardado en la galería.</string>
     <string name="error_guardar">No se ha podido guardar el collage.</string>
+    <string name="error_memoria">No hay memoria suficiente para generar el collage.</string>
+    <string name="error_permiso">La aplicación no tiene permiso para guardar en la galería.</string>
+    <string name="error_escritura">No se ha podido escribir el archivo del collage.</string>
 
     <string name="confirmar_eliminar_todas_titulo">Eliminar todas las fotografías</string>
     <string name="confirmar_eliminar_todas_mensaje">Se vaciará el collage completo. ¿Quieres continuar?</string>

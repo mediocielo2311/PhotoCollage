@@ -1,16 +1,11 @@
 package com.sara.photocollage
 
-import android.content.ContentValues
 import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Rect
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
-import android.provider.MediaStore
+import android.util.Log
 import android.view.View
 import android.widget.EditText
 import android.widget.FrameLayout
@@ -28,7 +23,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.FileProvider
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
@@ -39,10 +33,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.json.JSONObject
-import java.io.File
-import java.io.FileOutputStream
-import kotlin.math.ceil
+import java.io.IOException
+
+// Etiqueta con la que esta pantalla escribe en el log del sistema.
+private const val TAG = "PhotoCollage"
 
 class MainActivity : AppCompatActivity() {
 
@@ -526,7 +520,7 @@ class MainActivity : AppCompatActivity() {
             .setView(campo)
             .setPositiveButton(R.string.aceptar_boton) { _, _ ->
                 val escrito = campo.text.toString().trim()
-                foto.texto = if (escrito.isEmpty()) null else escrito
+                foto.texto = escrito.ifEmpty { null }
                 actualizarFoto(posicion)
             }
             .setNegativeButton(R.string.cancelar_boton, null)
@@ -550,137 +544,58 @@ class MainActivity : AppCompatActivity() {
     // --- Guardar y recuperar el estado -----------------------------------------
 
     // Guarda el collage por si el sistema cierra la aplicación para liberar memoria.
-    // El ViewModel ya cubre los giros de pantalla; esto cubre el cierre del proceso.
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-
-        val guardadas = ArrayList<String>()
-        for (foto in viewModel.fotos) {
-            val datos = JSONObject()
-            datos.put("uri", foto.uriOriginal.toString())
-            datos.put("filtro", foto.filtro.name)
-            datos.put("rotacion", foto.rotacion)
-            datos.put("brillo", foto.brillo)
-            datos.put("saturacion", foto.saturacion)
-            datos.put("texto", foto.texto ?: "")
-            guardadas.add(datos.toString())
-        }
-
-        outState.putStringArrayList(CLAVE_FOTOS, guardadas)
-        outState.putInt(CLAVE_COLUMNAS, viewModel.columnas)
-        outState.putInt(CLAVE_SELECCION, viewModel.seleccionada)
+        EstadoCollage.guardar(outState, viewModel.fotos, viewModel.columnas, viewModel.seleccionada)
     }
 
-    // Rehace el collage a partir de lo guardado.
+    // Rehace el collage guardado, si es que se había perdido.
     // Entra: el estado guardado por el sistema. Sale: nada.
     private fun recuperarEstado(estado: Bundle) {
         // Si el ViewModel sigue vivo, el collage no se ha perdido y no hay nada que rehacer.
         if (viewModel.fotos.isNotEmpty()) return
 
-        val guardadas = estado.getStringArrayList(CLAVE_FOTOS) ?: return
+        val recuperado = EstadoCollage.recuperar(estado, contentResolver) ?: return
 
-        for (linea in guardadas) {
-            try {
-                val datos = JSONObject(linea)
-                val uri = Uri.parse(datos.getString("uri"))
-
-                // Tras cerrarse el proceso, el permiso sobre la foto puede haber caducado.
-                if (!puedeLeerse(uri)) continue
-
-                viewModel.fotos.add(
-                    Foto(
-                        uriOriginal = uri,
-                        filtro = TipoFiltro.valueOf(datos.getString("filtro")),
-                        rotacion = datos.getInt("rotacion"),
-                        brillo = datos.getInt("brillo"),
-                        saturacion = datos.getInt("saturacion"),
-                        texto = datos.getString("texto").ifEmpty { null }
-                    )
-                )
-            } catch (e: Exception) {
-                // Una foto que no se pueda rehacer simplemente no se añade.
-            }
-        }
-
-        viewModel.columnas = estado.getInt(CLAVE_COLUMNAS, viewModel.columnas)
-        viewModel.seleccionada = estado.getInt(CLAVE_SELECCION, -1)
-    }
-
-    // Comprueba que la aplicación todavía puede leer esa fotografía.
-    // Entra: la Uri de la foto. Sale: true si se puede abrir.
-    private fun puedeLeerse(uri: Uri): Boolean = try {
-        contentResolver.openInputStream(uri)?.close()
-        true
-    } catch (e: Exception) {
-        false
+        viewModel.fotos.addAll(recuperado.fotos)
+        viewModel.columnas = recuperado.columnas
+        viewModel.seleccionada = recuperado.seleccionada
     }
 
     // --- Collage final ---------------------------------------------------------
 
-    // Compone en una sola imagen todas las fotos del collage, con sus ediciones.
-    // Entra: nada. Sale: el bitmap del collage completo.
-    private fun generarCollage(): Bitmap {
-        // Nunca más columnas que fotos, para no dejar huecos vacíos en la imagen final.
-        val columnas = minOf(columnasEfectivas(), viewModel.fotos.size).coerceAtLeast(1)
-        val filas = ceil(viewModel.fotos.size / columnas.toDouble()).toInt().coerceAtLeast(1)
-        val ladoCelda = 400
-
-        val collage = Bitmap.createBitmap(
-            columnas * ladoCelda,
-            filas * ladoCelda,
-            Bitmap.Config.ARGB_8888
-        )
-
-        val lienzo = Canvas(collage)
-        lienzo.drawColor(Color.WHITE)
-
-        for (indice in viewModel.fotos.indices) {
-            val columna = indice % columnas
-            val fila = indice / columnas
-            val destino = Rect(
-                columna * ladoCelda,
-                fila * ladoCelda,
-                (columna + 1) * ladoCelda,
-                (fila + 1) * ladoCelda
-            )
-
-            // Recorte centrado para que la foto no salga deformada en la celda cuadrada.
-            val bitmapFoto = adapter.bitmapProcesado(indice)
-            val lado = minOf(bitmapFoto.width, bitmapFoto.height)
-            val izquierda = (bitmapFoto.width - lado) / 2
-            val arriba = (bitmapFoto.height - lado) / 2
-            val origen = Rect(izquierda, arriba, izquierda + lado, arriba + lado)
-
-            lienzo.drawBitmap(bitmapFoto, origen, destino, null)
+    // Compone la imagen final con las fotos del collage tal y como se ven en pantalla.
+    // Entra: nada. Sale: el bitmap del collage. Tarda, así que se llama desde segundo plano.
+    private fun componerCollage(): Bitmap =
+        GeneradorCollage.generar(viewModel.fotos.size, columnasEfectivas()) { posicion ->
+            adapter.bitmapProcesado(posicion)
         }
 
-        return collage
-    }
-
-    // Genera el collage, lo guarda en la caché de la app y lo envía a otras aplicaciones.
+    // Genera el collage y lo envía a otras aplicaciones.
     private fun compartirCollage() {
         if (viewModel.fotos.isEmpty()) {
-            Toast.makeText(this, R.string.collage_vacio, Toast.LENGTH_SHORT).show()
+            avisar(R.string.collage_vacio)
             return
         }
 
-        try {
-            val collage = generarCollage()
-
-            val carpeta = File(cacheDir, "collage_compartido")
-            carpeta.mkdirs()
-            val archivo = File(carpeta, "collage_${System.currentTimeMillis()}.png")
-
-            FileOutputStream(archivo).use { salida ->
-                collage.compress(Bitmap.CompressFormat.PNG, 100, salida)
+        lifecycleScope.launch {
+            val uriCollage = try {
+                withContext(Dispatchers.Default) {
+                    GeneradorCollage.prepararParaCompartir(this@MainActivity, componerCollage())
+                }
+            } catch (e: OutOfMemoryError) {
+                Log.w(TAG, "Sin memoria al componer el collage para compartir", e)
+                avisar(R.string.error_memoria)
+                return@launch
+            } catch (e: IOException) {
+                Log.w(TAG, "No se pudo escribir el collage en la caché", e)
+                avisar(R.string.error_escritura)
+                return@launch
+            } catch (e: Exception) {
+                Log.w(TAG, "Error inesperado al preparar el collage para compartir", e)
+                avisar(R.string.error_guardar)
+                return@launch
             }
-
-            // FileProvider genera una Uri content:// temporal, sin exponer la ruta real.
-            val uriCollage = FileProvider.getUriForFile(
-                this,
-                "$packageName.fileprovider",
-                archivo
-            )
 
             val envio = Intent(Intent.ACTION_SEND).apply {
                 type = "image/png"
@@ -689,49 +604,41 @@ class MainActivity : AppCompatActivity() {
             }
 
             startActivity(Intent.createChooser(envio, getString(R.string.compartir_titulo)))
-        } catch (e: Exception) {
-            Toast.makeText(this, R.string.error_guardar, Toast.LENGTH_SHORT).show()
         }
     }
 
     // Genera el collage y lo guarda en la galería del dispositivo.
     private fun guardarCollage() {
         if (viewModel.fotos.isEmpty()) {
-            Toast.makeText(this, R.string.collage_vacio, Toast.LENGTH_SHORT).show()
+            avisar(R.string.collage_vacio)
             return
         }
 
-        try {
-            val collage = generarCollage()
-
-            val datos = ContentValues().apply {
-                put(MediaStore.Images.Media.DISPLAY_NAME, "collage_${System.currentTimeMillis()}.png")
-                put(MediaStore.Images.Media.MIME_TYPE, "image/png")
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/PhotoCollage")
+        lifecycleScope.launch {
+            try {
+                val guardado = withContext(Dispatchers.Default) {
+                    GeneradorCollage.guardarEnGaleria(this@MainActivity, componerCollage())
                 }
+                avisar(if (guardado) R.string.collage_guardado else R.string.error_guardar)
+            } catch (e: OutOfMemoryError) {
+                Log.w(TAG, "Sin memoria al componer el collage para guardar", e)
+                avisar(R.string.error_memoria)
+            } catch (e: SecurityException) {
+                Log.w(TAG, "Sin permiso para guardar en la galería", e)
+                avisar(R.string.error_permiso)
+            } catch (e: IOException) {
+                Log.w(TAG, "No se pudo escribir el collage en la galería", e)
+                avisar(R.string.error_escritura)
+            } catch (e: Exception) {
+                Log.w(TAG, "Error inesperado al guardar el collage", e)
+                avisar(R.string.error_guardar)
             }
-
-            val destino = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, datos)
-            if (destino == null) {
-                Toast.makeText(this, R.string.error_guardar, Toast.LENGTH_SHORT).show()
-                return
-            }
-
-            contentResolver.openOutputStream(destino)?.use { salida ->
-                collage.compress(Bitmap.CompressFormat.PNG, 100, salida)
-            }
-
-            Toast.makeText(this, R.string.collage_guardado, Toast.LENGTH_SHORT).show()
-        } catch (e: Exception) {
-            Toast.makeText(this, R.string.error_guardar, Toast.LENGTH_SHORT).show()
         }
     }
 
-    // Claves con las que se guarda el estado del collage.
-    companion object {
-        private const val CLAVE_FOTOS = "fotos"
-        private const val CLAVE_COLUMNAS = "columnas"
-        private const val CLAVE_SELECCION = "seleccion"
+    // Muestra un mensaje breve al usuario.
+    // Entra: el texto a mostrar. Sale: nada.
+    private fun avisar(mensaje: Int) {
+        Toast.makeText(this, mensaje, Toast.LENGTH_SHORT).show()
     }
 }

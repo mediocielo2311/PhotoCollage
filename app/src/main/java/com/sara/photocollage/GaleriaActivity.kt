@@ -1,11 +1,13 @@
 package com.sara.photocollage
 
+import android.annotation.SuppressLint
 import android.app.Dialog
 import android.content.ContentUris
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
+import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.ImageButton
@@ -90,7 +92,7 @@ class GaleriaActivity : AppCompatActivity() {
         btnSeleccionarTodos.setOnClickListener {
             seleccionados.clear()
             seleccionados.addAll(collages)
-            adapter.notifyDataSetChanged()
+            adapter.notifyItemRangeChanged(0, collages.size)
             actualizarBarras()
         }
 
@@ -116,6 +118,9 @@ class GaleriaActivity : AppCompatActivity() {
     // --- Carga de datos --------------------------------------------------------
 
     // Vuelve a preguntar al dispositivo qué collages hay y actualiza la pantalla.
+    // Aquí se sustituye la lista entera, así que lo correcto es repintarla completa,
+    // porque no hay elementos concretos que hayan cambiado, sino un contenido nuevo.
+    @SuppressLint("NotifyDataSetChanged")
     private fun cargarCollages() {
         collages.clear()
         collages.addAll(buscarCollagesGuardados())
@@ -166,7 +171,7 @@ class GaleriaActivity : AppCompatActivity() {
         if (!seleccionados.remove(uri)) seleccionados.add(uri)
         if (seleccionados.isEmpty()) modoSeleccion = false
 
-        adapter.notifyDataSetChanged()
+        adapter.notifyItemChanged(collages.indexOf(uri))
         actualizarBarras()
     }
 
@@ -175,7 +180,7 @@ class GaleriaActivity : AppCompatActivity() {
         modoSeleccion = true
         seleccionados.add(uri)
 
-        adapter.notifyDataSetChanged()
+        adapter.notifyItemChanged(collages.indexOf(uri))
         actualizarBarras()
     }
 
@@ -183,7 +188,7 @@ class GaleriaActivity : AppCompatActivity() {
         modoSeleccion = false
         seleccionados.clear()
 
-        adapter.notifyDataSetChanged()
+        adapter.notifyItemRangeChanged(0, collages.size)
         actualizarBarras()
     }
 
@@ -231,6 +236,7 @@ class GaleriaActivity : AppCompatActivity() {
                 borrados += contentResolver.delete(uri, null, null)
             } catch (e: SecurityException) {
                 // Si el sistema no permite borrar ese archivo, simplemente se deja como estaba.
+                Log.w("PhotoCollage", "Sin permiso para eliminar el collage: $uri", e)
             }
         }
 
