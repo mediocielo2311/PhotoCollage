@@ -8,9 +8,16 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.recyclerview.widget.RecyclerView
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 // Adaptador del RecyclerView: pinta cada foto del collage en una celda de la cuadrícula,
-// aplicando sobre la marcha el filtro, brillo, saturación, rotación y texto de esa foto.
+// aplicando el filtro, brillo, saturación, rotación y texto de esa foto.
+// El cálculo de los píxeles se hace en segundo plano para no bloquear la interfaz.
 class FotosAdapter(
     private val context: Context,
     private val fotos: MutableList<Foto>,
@@ -22,9 +29,14 @@ class FotosAdapter(
     var posicionSeleccionada: Int = -1
         private set
 
-    // Guarda el resultado ya procesado de cada combinación de edición,
-    // para no recalcular los píxeles cada vez que el RecyclerView repinta una celda.
+    // Guarda el resultado ya procesado de cada foto, para no recalcular los píxeles
+    // cada vez que el RecyclerView repinta una celda. Solo se conserva la versión vigente
+    // de cada fotografía: al cambiar su edición se descarta la anterior, de forma que la
+    // memoria ocupada no crece aunque se mueva mucho un deslizador.
     private val procesadas = mutableMapOf<String, Bitmap>()
+
+    // Pinta en el hilo principal, calcula en segundo plano.
+    private val ambito = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     // Selecciona una foto; si ya estaba seleccionada, la deselecciona.
     fun seleccionar(posicion: Int) {
@@ -47,7 +59,8 @@ class FotosAdapter(
         posicionSeleccionada = if (posicion in fotos.indices) posicion else -1
     }
 
-    // Devuelve el bitmap ya editado de una foto (lo usa el collage final).
+    // Devuelve el bitmap ya editado de una foto. Lo usa el collage final.
+    // Entra: la posición de la foto. Sale: su imagen con todas las ediciones aplicadas.
     fun bitmapProcesado(posicion: Int): Bitmap = procesar(fotos[posicion])
 
     // Libera de memoria las versiones procesadas de una foto concreta.
@@ -68,24 +81,51 @@ class FotosAdapter(
 
     override fun onBindViewHolder(holder: FotoViewHolder, position: Int) {
         val foto = fotos[position]
+        val firma = firmaDe(foto)
 
-        holder.ivFoto.setImageBitmap(procesar(foto))
+        // La firma identifica qué imagen debe acabar en esta celda; si la celda se reutiliza
+        // para otra foto mientras se calcula, el resultado antiguo se descarta.
+        holder.ivFoto.tag = firma
+
         holder.vBorde.visibility = if (position == posicionSeleccionada) View.VISIBLE else View.GONE
         holder.itemView.setOnClickListener { alPulsarFoto(holder.bindingAdapterPosition) }
         holder.itemView.setOnLongClickListener {
             alMantenerPulsadaFoto(holder.bindingAdapterPosition)
             true
         }
+
+        val yaCalculada = procesadas[firma]
+        if (yaCalculada != null) {
+            holder.ivFoto.setImageBitmap(yaCalculada)
+            return
+        }
+
+        holder.ivFoto.setImageDrawable(null)
+        ambito.launch {
+            val imagen = withContext(Dispatchers.Default) { procesar(foto) }
+            if (holder.ivFoto.tag == firma) holder.ivFoto.setImageBitmap(imagen)
+        }
     }
 
     override fun getItemCount(): Int = fotos.size
 
-    // Aplica en cadena todas las ediciones de una foto sobre su original.
-    // Entra: la foto con su estado. Sale: el bitmap listo para mostrar.
-    private fun procesar(foto: Foto): Bitmap {
-        val firma = "${foto.uriOriginal}|${foto.filtro}|${foto.brillo}|" +
+    // Al desaparecer la lista se cancelan los cálculos que quedaran en marcha.
+    override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
+        super.onDetachedFromRecyclerView(recyclerView)
+        ambito.cancel()
+    }
+
+    // Identifica el estado de edición de una foto: si no cambia, la imagen tampoco.
+    private fun firmaDe(foto: Foto): String =
+        "${foto.uriOriginal}|${foto.filtro}|${foto.brillo}|" +
                 "${foto.saturacion}|${foto.rotacion}|${foto.texto}"
 
+    // Aplica en cadena todas las ediciones de una foto sobre su original.
+    // Entra: la foto con su estado. Sale: el bitmap listo para mostrar.
+    // Está sincronizada porque varias celdas pueden pedir su imagen a la vez.
+    @Synchronized
+    private fun procesar(foto: Foto): Bitmap {
+        val firma = firmaDe(foto)
         procesadas[firma]?.let { return it }
 
         var bitmap = BitmapCache.original(context, foto.uriOriginal)
@@ -102,7 +142,10 @@ class FotosAdapter(
         val texto = foto.texto
         if (texto != null) bitmap = FiltrosImagen.conTexto(bitmap, texto)
 
+        // Fuera la versión anterior de esta misma foto antes de guardar la nueva.
+        liberarCacheDe(foto.uriOriginal)
         procesadas[firma] = bitmap
+
         return bitmap
     }
 

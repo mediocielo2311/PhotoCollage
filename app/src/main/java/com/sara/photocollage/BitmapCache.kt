@@ -15,6 +15,8 @@ object BitmapCache {
     private val originales = mutableMapOf<String, Bitmap>()
 
     // Devuelve el bitmap original (reducido) de una foto, decodificándolo solo la primera vez.
+    // Sincronizada porque se llama desde los hilos en segundo plano que procesan las imágenes.
+    @Synchronized
     fun original(context: Context, uri: Uri): Bitmap {
         val clave = uri.toString()
         originales[clave]?.let { return it }
@@ -25,11 +27,13 @@ object BitmapCache {
     }
 
     // Saca de memoria el original de una foto concreta.
+    @Synchronized
     fun liberar(uri: Uri) {
         originales.remove(uri.toString())
     }
 
     // Saca de memoria todos los originales.
+    @Synchronized
     fun liberarTodo() {
         originales.clear()
     }

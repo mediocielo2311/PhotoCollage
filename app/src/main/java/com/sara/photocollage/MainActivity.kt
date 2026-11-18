@@ -31,9 +31,15 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
 import kotlin.math.ceil
@@ -59,6 +65,9 @@ class MainActivity : AppCompatActivity() {
 
     // Evita que los SeekBar reaccionen cuando es el código quien cambia su posición.
     private var actualizandoControles = false
+
+    // Cálculo en curso de la imagen ampliada, para poder cancelarlo si llega otro.
+    private var trabajoVistaGrande: Job? = null
 
     // Número máximo de fotos que se pueden elegir de una vez.
     private val maximoFotos = 20
@@ -90,6 +99,8 @@ class MainActivity : AppCompatActivity() {
         ivVistaGrande = findViewById(R.id.ivVistaGrande)
         sbBrillo = findViewById(R.id.sbBrillo)
         sbSaturacion = findViewById(R.id.sbSaturacion)
+
+        savedInstanceState?.let { recuperarEstado(it) }
 
         configurarCuadricula()
         configurarBarraPrincipal()
@@ -330,6 +341,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     // Vuelve a pintar la foto ampliada con sus ediciones actuales.
+    // El cálculo va en segundo plano y se cancela si llega otra petición antes de terminar,
+    // que es lo que pasa al arrastrar un deslizador.
     private fun refrescarVistaGrande() {
         if (!viewModel.vistaGrande) return
 
@@ -339,7 +352,13 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        ivVistaGrande.setImageBitmap(adapter.bitmapProcesado(posicion))
+        trabajoVistaGrande?.cancel()
+        trabajoVistaGrande = lifecycleScope.launch {
+            val imagen = withContext(Dispatchers.Default) { adapter.bitmapProcesado(posicion) }
+            if (viewModel.vistaGrande && adapter.posicionSeleccionada == posicion) {
+                ivVistaGrande.setImageBitmap(imagen)
+            }
+        }
     }
 
     // Repinta una foto en la cuadrícula y, si está abierta, también en la vista ampliada.
@@ -528,6 +547,74 @@ class MainActivity : AppCompatActivity() {
         return if (apaisado) viewModel.columnas + 2 else viewModel.columnas
     }
 
+    // --- Guardar y recuperar el estado -----------------------------------------
+
+    // Guarda el collage por si el sistema cierra la aplicación para liberar memoria.
+    // El ViewModel ya cubre los giros de pantalla; esto cubre el cierre del proceso.
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+
+        val guardadas = ArrayList<String>()
+        for (foto in viewModel.fotos) {
+            val datos = JSONObject()
+            datos.put("uri", foto.uriOriginal.toString())
+            datos.put("filtro", foto.filtro.name)
+            datos.put("rotacion", foto.rotacion)
+            datos.put("brillo", foto.brillo)
+            datos.put("saturacion", foto.saturacion)
+            datos.put("texto", foto.texto ?: "")
+            guardadas.add(datos.toString())
+        }
+
+        outState.putStringArrayList(CLAVE_FOTOS, guardadas)
+        outState.putInt(CLAVE_COLUMNAS, viewModel.columnas)
+        outState.putInt(CLAVE_SELECCION, viewModel.seleccionada)
+    }
+
+    // Rehace el collage a partir de lo guardado.
+    // Entra: el estado guardado por el sistema. Sale: nada.
+    private fun recuperarEstado(estado: Bundle) {
+        // Si el ViewModel sigue vivo, el collage no se ha perdido y no hay nada que rehacer.
+        if (viewModel.fotos.isNotEmpty()) return
+
+        val guardadas = estado.getStringArrayList(CLAVE_FOTOS) ?: return
+
+        for (linea in guardadas) {
+            try {
+                val datos = JSONObject(linea)
+                val uri = Uri.parse(datos.getString("uri"))
+
+                // Tras cerrarse el proceso, el permiso sobre la foto puede haber caducado.
+                if (!puedeLeerse(uri)) continue
+
+                viewModel.fotos.add(
+                    Foto(
+                        uriOriginal = uri,
+                        filtro = TipoFiltro.valueOf(datos.getString("filtro")),
+                        rotacion = datos.getInt("rotacion"),
+                        brillo = datos.getInt("brillo"),
+                        saturacion = datos.getInt("saturacion"),
+                        texto = datos.getString("texto").ifEmpty { null }
+                    )
+                )
+            } catch (e: Exception) {
+                // Una foto que no se pueda rehacer simplemente no se añade.
+            }
+        }
+
+        viewModel.columnas = estado.getInt(CLAVE_COLUMNAS, viewModel.columnas)
+        viewModel.seleccionada = estado.getInt(CLAVE_SELECCION, -1)
+    }
+
+    // Comprueba que la aplicación todavía puede leer esa fotografía.
+    // Entra: la Uri de la foto. Sale: true si se puede abrir.
+    private fun puedeLeerse(uri: Uri): Boolean = try {
+        contentResolver.openInputStream(uri)?.close()
+        true
+    } catch (e: Exception) {
+        false
+    }
+
     // --- Collage final ---------------------------------------------------------
 
     // Compone en una sola imagen todas las fotos del collage, con sus ediciones.
@@ -639,5 +726,12 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Toast.makeText(this, R.string.error_guardar, Toast.LENGTH_SHORT).show()
         }
+    }
+
+    // Claves con las que se guarda el estado del collage.
+    companion object {
+        private const val CLAVE_FOTOS = "fotos"
+        private const val CLAVE_COLUMNAS = "columnas"
+        private const val CLAVE_SELECCION = "seleccion"
     }
 }
