@@ -65,12 +65,14 @@ El botón atrás del dispositivo cierra primero la edición y después la vista 
 
 | Archivo | Responsabilidad |
 |---|---|
-| `MainActivity.kt` | Pantalla principal: eventos de las barras y los botones flotantes, selección, menús y diálogos. |
+| `MainActivity.kt` | Pantalla principal: coordina las barras, los botones flotantes, la selección, los menús y los diálogos. |
 | `FotosViewModel.kt` | Estado del collage (fotos, columnas, selección y modo edición); lo conserva al girar la pantalla. |
 | `Foto.kt` | Modelo de datos: Uri original de la fotografía y su estado de edición. |
 | `FotosAdapter.kt` | Adaptador de la cuadrícula: calcula en segundo plano la imagen editada de cada celda y guarda en caché la versión vigente de cada fotografía. |
 | `FiltrosImagen.kt` | Filtros implementados en Kotlin manipulando directamente los píxeles. |
 | `BitmapCache.kt` | Decodifica y reduce cada imagen original una sola vez, y libera memoria al eliminar fotos. |
+| `GeneradorCollage.kt` | Compone la imagen final del collage, la guarda en la galería y la prepara para compartirla. |
+| `EstadoCollage.kt` | Guarda y recupera el collage cuando el sistema cierra la aplicación. |
 | `GaleriaActivity.kt` | Pantalla de collages guardados: consulta a `MediaStore` y vista a pantalla completa. |
 | `CollagesAdapter.kt` | Adaptador de la cuadrícula de collages guardados. |
 
@@ -94,10 +96,14 @@ descarta la anterior, por lo que la memoria ocupada no crece con el uso.
 ### Conservación del estado
 
 El estado del collage vive en un `ViewModel`, por lo que sobrevive a los cambios de configuración
-como el giro de pantalla. Además se guarda en `onSaveInstanceState`, de forma que el collage se
-recupera también si el sistema cierra la aplicación para liberar memoria. Al recuperarlo se
-comprueba fotografía a fotografía que la aplicación siga teniendo acceso a ella, descartando las
-que ya no se puedan leer.
+como el giro de pantalla. Además se guarda en `onSaveInstanceState`, delegando en la clase
+`EstadoCollage`, de forma que el collage se recupera también si el sistema cierra la aplicación
+para liberar memoria. Al recuperarlo se comprueba fotografía a fotografía que la aplicación siga
+teniendo acceso a ella, descartando las que ya no se puedan leer.
+
+Los errores que puedan darse al generar, guardar o compartir el collage se distinguen entre falta
+de memoria, falta de permisos y fallo de escritura, se avisan al usuario con mensajes distintos y
+quedan registrados en el log del sistema.
 
 ## Permisos
 
